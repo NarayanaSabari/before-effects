@@ -96,6 +96,7 @@ final class ToolExecutor {
         case .syncAudio:     return try await syncAudio(editor, args)
         case .undo:          return try undo(editor)
         case .listTemplates: return try listTemplates(editor)
+        case .createTemplate: return try createTemplate(editor, args)
         case .addTexts:      return try addTexts(editor, args)
         case .addCaptions:   return try await addCaptions(editor, args)
         case .exportProject: return try await exportProject(editor, args)

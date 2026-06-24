@@ -17,6 +17,7 @@ enum ToolName: String, CaseIterable, Sendable {
     case syncAudio = "sync_audio"
     case undo = "undo"
     case listTemplates = "list_templates"
+    case createTemplate = "create_template"
     case addTexts = "add_texts"
     case addCaptions = "add_captions"
     case exportProject = "export_project"
@@ -363,6 +364,49 @@ enum ToolDefinitions {
             name: .listTemplates,
             description: "List saved edit templates (reusable motion presets) from the user's global template library. Returns id, name, kind, and summary per template. Use this to discover templates before applying one, or to answer \"what templates do I have?\".",
             inputSchema: objectSchema()
+        ),
+        AgentTool(
+            name: .createTemplate,
+            description: "Create and save a reusable motion-preset template in the user's global library. The motion is RELATIVE to whatever clip it is later applied to: `start`/`end` are transform states relative to the clip's resting transform, animated over the `span`. Examples: slide-in-from-left = span clipStart, start {translateX:-1}, end {} ; punch-in = start {}, end {scale:1.2} ; fade-in = start {opacity:0}, end {}. Pass `previewClipId` to also apply it to a clip so the user can see it (you can delete the template later if they dislike it). Coordinates: translateX/Y are in 0–1 canvas widths/heights added to the resting center; scale multiplies the resting size about the center; rotate is clockwise degrees; opacity is absolute 0–1.",
+            inputSchema: objectSchema(
+                properties: [
+                    "name": ["type": "string", "description": "Template name."],
+                    "summary": ["type": "string", "description": "Optional one-line description."],
+                    "span": [
+                        "type": "object",
+                        "description": "Where the animation sits and how long it runs.",
+                        "properties": [
+                            "anchor": ["type": "string", "enum": ["clipStart", "clipEnd", "fullClip"], "description": "clipStart = entrance over first N frames; clipEnd = exit over last N frames; fullClip = whole clip."],
+                            "frames": ["type": "integer", "description": "Length in frames. Required unless anchor is fullClip."],
+                        ],
+                    ],
+                    "easing": ["type": "string", "enum": ["linear", "smooth", "hold"], "description": "Interpolation (default smooth; 'smooth' is ease-in-out)."],
+                    "start": [
+                        "type": "object",
+                        "description": "Transform state at the start of the span, RELATIVE to rest. All fields optional (default = rest).",
+                        "properties": [
+                            "translateX": ["type": "number", "description": "Offset added to resting center in 0–1 canvas widths (-1 = one width left, offscreen)."],
+                            "translateY": ["type": "number", "description": "Offset in 0–1 canvas heights."],
+                            "scale": ["type": "number", "description": "Multiplier on resting size about center (1 = rest)."],
+                            "rotate": ["type": "number", "description": "Degrees added to resting rotation (clockwise)."],
+                            "opacity": ["type": "number", "description": "Absolute opacity 0–1; omit to keep rest."],
+                        ],
+                    ],
+                    "end": [
+                        "type": "object",
+                        "description": "Transform state at the end of the span, RELATIVE to rest. All fields optional (default = rest).",
+                        "properties": [
+                            "translateX": ["type": "number", "description": "Offset added to resting center in 0–1 canvas widths."],
+                            "translateY": ["type": "number", "description": "Offset in 0–1 canvas heights."],
+                            "scale": ["type": "number", "description": "Multiplier on resting size about center (1 = rest)."],
+                            "rotate": ["type": "number", "description": "Degrees added to resting rotation (clockwise)."],
+                            "opacity": ["type": "number", "description": "Absolute opacity 0–1; omit to keep rest."],
+                        ],
+                    ],
+                    "previewClipId": ["type": "string", "description": "Optional clip to also apply the template to immediately."],
+                ],
+                required: ["name"]
+            )
         ),
         AgentTool(
             name: .addTexts,
