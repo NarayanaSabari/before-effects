@@ -121,3 +121,67 @@ private struct CreateTemplateInput: DecodableToolArgs {
         try buildPreset(span: span, easing: easing, start: start, end: end, path: "create_template")
     }
 }
+
+extension ToolExecutor {
+    func applyTemplate(_ editor: EditorViewModel, _ args: [String: Any]) throws -> ToolResult {
+        let input: ApplyTemplateInput = try decodeToolArgs(args, path: "apply_template")
+        guard !input.clipIds.isEmpty else { throw ToolError("apply_template: clipIds must not be empty") }
+
+        var preset: MotionPreset
+        if let id = input.templateId {
+            guard let t = templateStore.template(id: id) else { throw ToolError("Template not found: \(id)") }
+            preset = t.motion
+        } else if let m = input.motion {
+            preset = try m.toModel()
+        } else {
+            throw ToolError("apply_template: provide either 'templateId' or 'motion'")
+        }
+        if let o = input.overrides {
+            preset = preset.applyingOverrides(
+                durationFrames: o.durationFrames,
+                easing: o.easing.flatMap(Interpolation.init(rawValue:)),
+                intensity: o.intensity,
+                flipX: o.flipX ?? false,
+                flipY: o.flipY ?? false)
+        }
+
+        for cid in input.clipIds {
+            guard let loc = editor.findClip(id: cid) else { throw ToolError("Clip not found: \(cid)") }
+            guard editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].mediaType != .audio else {
+                throw ToolError("Cannot apply a motion template to an audio clip: \(cid)")
+            }
+        }
+
+        withUndoGroup(editor, actionName: "Apply Template (Agent)") {
+            for cid in input.clipIds { _ = writePresetTracks(editor, preset: preset, clipId: cid) }
+        }
+        let payload: [String: Any] = ["applied": input.clipIds.count]
+        return .ok(Self.jsonString(payload) ?? "{\"applied\":\(input.clipIds.count)}")
+    }
+}
+
+private struct MotionInput: Codable {
+    var span: SpanInput?
+    var easing: String?
+    var start: TransformOffsetInput?
+    var end: TransformOffsetInput?
+    func toModel() throws -> MotionPreset {
+        try buildPreset(span: span, easing: easing, start: start, end: end, path: "apply_template.motion")
+    }
+}
+
+private struct OverridesInput: Codable {
+    var durationFrames: Int?
+    var easing: String?
+    var intensity: Double?
+    var flipX: Bool?
+    var flipY: Bool?
+}
+
+private struct ApplyTemplateInput: DecodableToolArgs {
+    let templateId: String?
+    let motion: MotionInput?
+    let clipIds: [String]
+    let overrides: OverridesInput?
+    static let allowedKeys: Set<String> = ["templateId", "motion", "clipIds", "overrides"]
+}
