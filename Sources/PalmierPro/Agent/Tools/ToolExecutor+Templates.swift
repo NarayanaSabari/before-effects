@@ -81,6 +81,33 @@ private func buildPreset(span: SpanInput?, easing: String?, start: TransformOffs
                         start: start?.toModel() ?? .identity, end: end?.toModel() ?? .identity)
 }
 
+extension ToolExecutor {
+    func captureTemplate(_ editor: EditorViewModel, _ args: [String: Any]) throws -> ToolResult {
+        let input: CaptureTemplateInput = try decodeToolArgs(args, path: "capture_template")
+        guard let loc = editor.findClip(id: input.clipId) else {
+            throw ToolError("Clip not found: \(input.clipId)")
+        }
+        let clip = editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex]
+        guard let preset = MotionPresetMapping.capturedPreset(
+            resting: clip.transform, restingOpacity: clip.opacity, clipDurationFrames: clip.durationFrames,
+            position: clip.positionTrack, scale: clip.scaleTrack, rotation: clip.rotationTrack, opacity: clip.opacityTrack
+        ) else {
+            throw ToolError("Clip '\(input.clipId)' has no motion keyframes to capture")
+        }
+        let template = EditTemplate(name: input.name, summary: input.summary ?? "", createdAt: Date(), motion: preset)
+        try templateStore.save(template)
+        let payload: [String: Any] = ["id": template.id, "name": template.name, "captured": true]
+        return .ok(Self.jsonString(payload) ?? "{\"captured\":true}")
+    }
+}
+
+private struct CaptureTemplateInput: DecodableToolArgs {
+    let name: String
+    let clipId: String
+    let summary: String?
+    static let allowedKeys: Set<String> = ["name", "clipId", "summary"]
+}
+
 private struct CreateTemplateInput: DecodableToolArgs {
     let name: String
     let summary: String?
