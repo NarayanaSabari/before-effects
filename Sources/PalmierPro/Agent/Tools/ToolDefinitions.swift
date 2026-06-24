@@ -20,6 +20,7 @@ enum ToolName: String, CaseIterable, Sendable {
     case listTemplates = "list_templates"
     case createTemplate = "create_template"
     case captureTemplate = "capture_template"
+    case applyTemplate = "apply_template"
     case addTexts = "add_texts"
     case updateText = "update_text"
     case addCaptions = "add_captions"
@@ -480,6 +481,47 @@ enum ToolDefinitions {
                     "summary": ["type": "string", "description": "Optional one-line description."],
                 ],
                 required: ["name", "clipId"]
+            )
+        ),
+        AgentTool(
+            name: .applyTemplate,
+            description: "Apply a motion template to one or more clips, writing keyframes (undoable). Provide EITHER `templateId` (a saved template from list_templates) OR an inline `motion` object (same shape as create_template's span/easing/start/end) to preview without saving. `overrides` tweak this application only. Each clip is animated relative to its own resting transform, so the same template adapts to differently-placed clips. Only the channels the template animates are set; other channels are left as-is. Audio clips are rejected.",
+            inputSchema: objectSchema(
+                properties: [
+                    "templateId": ["type": "string", "description": "Id of a saved template (from list_templates)."],
+                    "clipIds": ["type": "array", "description": "Clip ids to apply to (the same motion is applied to each).", "items": ["type": "string"]],
+                    "motion": [
+                        "type": "object",
+                        "description": "Inline preset to apply without saving. Same fields as create_template (span, easing, start, end).",
+                        "properties": [
+                            "span": ["type": "object", "properties": [
+                                "anchor": ["type": "string", "enum": ["clipStart", "clipEnd", "fullClip"]],
+                                "frames": ["type": "integer"],
+                            ]],
+                            "easing": ["type": "string", "enum": ["linear", "smooth", "hold"]],
+                            "start": ["type": "object", "properties": [
+                                "translateX": ["type": "number"], "translateY": ["type": "number"],
+                                "scale": ["type": "number"], "rotate": ["type": "number"], "opacity": ["type": "number"],
+                            ]],
+                            "end": ["type": "object", "properties": [
+                                "translateX": ["type": "number"], "translateY": ["type": "number"],
+                                "scale": ["type": "number"], "rotate": ["type": "number"], "opacity": ["type": "number"],
+                            ]],
+                        ],
+                    ],
+                    "overrides": [
+                        "type": "object",
+                        "description": "Optional per-apply tweaks.",
+                        "properties": [
+                            "durationFrames": ["type": "integer", "description": "Override animation length in frames."],
+                            "easing": ["type": "string", "enum": ["linear", "smooth", "hold"]],
+                            "intensity": ["type": "number", "description": "Scale motion magnitude (1 = unchanged, 2 = twice as pronounced)."],
+                            "flipX": ["type": "boolean", "description": "Mirror horizontal direction (slide-from-left → from-right)."],
+                            "flipY": ["type": "boolean", "description": "Mirror vertical direction."],
+                        ],
+                    ],
+                ],
+                required: ["clipIds"]
             )
         ),
         AgentTool(

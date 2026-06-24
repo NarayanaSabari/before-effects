@@ -109,6 +109,7 @@ final class ToolExecutor {
         case .listTemplates: return try listTemplates(editor)
         case .createTemplate: return try createTemplate(editor, args)
         case .captureTemplate: return try captureTemplate(editor, args)
+        case .applyTemplate: return try applyTemplate(editor, args)
         case .addTexts:      return try addTexts(editor, args)
         case .updateText:    return try updateText(editor, args)
         case .addCaptions:   return try await addCaptions(editor, args)
