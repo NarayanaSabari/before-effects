@@ -26,7 +26,8 @@ extension ToolExecutor {
             note = ok ? " Previewed on clip \(cid)." : " (Preview skipped: clip not found or not animatable.)"
         }
         let payload: [String: Any] = ["id": template.id, "name": template.name, "saved": true]
-        return .ok(Self.jsonString(payload) ?? "{\"saved\":true}")
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        return .ok(String(decoding: data, as: UTF8.self))
     }
 
     /// Writes a preset's keyframe tracks onto a clip. Returns false if the clip is missing or
@@ -39,10 +40,10 @@ extension ToolExecutor {
         let tracks = MotionPresetMapping.tracks(
             for: preset, resting: clip.transform, restingOpacity: clip.opacity, clipDurationFrames: clip.durationFrames)
         editor.commitClipProperty(clipId: clipId) { c in
-            if let p = tracks.position { c.positionTrack = p }
-            if let s = tracks.scale { c.scaleTrack = s }
-            if let r = tracks.rotation { c.rotationTrack = r }
-            if let o = tracks.opacity { c.opacityTrack = o }
+            c.positionTrack = tracks.position
+            c.scaleTrack = tracks.scale
+            c.rotationTrack = tracks.rotation
+            c.opacityTrack = tracks.opacity
         }
         return true
     }
@@ -97,7 +98,8 @@ extension ToolExecutor {
         let template = EditTemplate(name: input.name, summary: input.summary ?? "", createdAt: Date(), motion: preset)
         try templateStore.save(template)
         let payload: [String: Any] = ["id": template.id, "name": template.name, "captured": true]
-        return .ok(Self.jsonString(payload) ?? "{\"captured\":true}")
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        return .ok(String(decoding: data, as: UTF8.self))
     }
 }
 
@@ -156,7 +158,8 @@ extension ToolExecutor {
             for cid in input.clipIds { _ = writePresetTracks(editor, preset: preset, clipId: cid) }
         }
         let payload: [String: Any] = ["applied": input.clipIds.count]
-        return .ok(Self.jsonString(payload) ?? "{\"applied\":\(input.clipIds.count)}")
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        return .ok(String(decoding: data, as: UTF8.self))
     }
 }
 

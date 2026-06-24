@@ -67,4 +67,25 @@ struct TemplateStoreTests {
         let reloaded = TemplateStore(rootDirectory: dir)
         #expect(reloaded.templates.count == 1)
     }
+
+    @Test func skipsNewerSchemaVersions() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TemplateStore(rootDirectory: dir)
+        try store.save(sample())
+
+        // Craft a newer-schema file by encoding a template and bumping the version to 999.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let newerSample = sample(id: "newer", name: "Future")
+        let jsonData = try encoder.encode(newerSample)
+        var jsonString = String(decoding: jsonData, as: UTF8.self)
+        jsonString = jsonString.replacingOccurrences(of: "\"version\" : 1", with: "\"version\" : 999")
+        try Data(jsonString.utf8).write(to: dir.appendingPathComponent("newer.json"))
+
+        let reloaded = TemplateStore(rootDirectory: dir)
+        #expect(reloaded.templates.count == 1)
+        #expect(reloaded.templates.first?.id == "t1")
+    }
 }

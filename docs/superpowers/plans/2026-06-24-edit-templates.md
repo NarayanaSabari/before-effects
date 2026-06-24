@@ -1659,7 +1659,7 @@ git commit -m "feat(templates): add apply_template agent tool"
 ## Notes & decisions
 
 - **Discoverability is via tool descriptions** (the same mechanism as the existing ~40 tools). No `AgentInstructions` change in v1.
-- **Replace semantics:** `apply_template` sets exactly the channels the preset animates; channels the preset doesn't touch are left unchanged. Re-applying a different template replaces only its own channels.
+- **Replace semantics:** `apply_template` replaces all four motion channels — channels the template doesn't animate are cleared.
 - **Capture is a two-state simplification:** it records the start and end of an animation, not intermediate keyframes. Round-trip fidelity is guaranteed at the keyframe-tracks level (re-applying a captured preset reproduces the same tracks).
 - **Floating-point:** the mapper uses exact `==` to decide whether a channel animates; identical offsets produce identical doubles, so this is safe. Tests use binary-exact values (0, ±1, 0.5, 0.75, 1.5).
 - **Out of scope (per spec):** any UI (chat-first), looks/text/effect/transition presets, agent-autonomous selection, video-derived templates.
