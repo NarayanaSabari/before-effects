@@ -68,3 +68,73 @@ enum MotionPresetMapping {
         )
     }
 }
+
+extension MotionPresetMapping {
+    static func capturedPreset(
+        resting: Transform,
+        restingOpacity: Double,
+        clipDurationFrames: Int,
+        position: KeyframeTrack<AnimPair>?,
+        scale: KeyframeTrack<AnimPair>?,
+        rotation: KeyframeTrack<Double>?,
+        opacity: KeyframeTrack<Double>?
+    ) -> MotionPreset? {
+        var frames: [Int] = []
+        frames += position?.keyframes.map(\.frame) ?? []
+        frames += scale?.keyframes.map(\.frame) ?? []
+        frames += rotation?.keyframes.map(\.frame) ?? []
+        frames += opacity?.keyframes.map(\.frame) ?? []
+        guard let minF = frames.min(), let maxF = frames.max(), minF != maxF else { return nil }
+
+        let d = max(clipDurationFrames, 1)
+        let span: MotionSpan
+        if minF <= 0 && maxF >= d {
+            span = MotionSpan(anchor: .fullClip)
+        } else if maxF >= d {
+            span = MotionSpan(anchor: .clipEnd, frames: d - minF)
+        } else {
+            span = MotionSpan(anchor: .clipStart, frames: maxF)
+        }
+
+        let hasOpacity = opacity != nil
+        let easing = earliestEasing(at: minF, position: position, scale: scale, rotation: rotation, opacity: opacity) ?? .smooth
+        let start = invert(at: minF, resting: resting, restingOpacity: restingOpacity,
+                           position: position, scale: scale, rotation: rotation, opacity: opacity, hasOpacity: hasOpacity)
+        let end = invert(at: maxF, resting: resting, restingOpacity: restingOpacity,
+                         position: position, scale: scale, rotation: rotation, opacity: opacity, hasOpacity: hasOpacity)
+        return MotionPreset(span: span, easing: easing, start: start, end: end)
+    }
+
+    private static func invert(
+        at frame: Int, resting: Transform, restingOpacity: Double,
+        position: KeyframeTrack<AnimPair>?, scale: KeyframeTrack<AnimPair>?,
+        rotation: KeyframeTrack<Double>?, opacity: KeyframeTrack<Double>?, hasOpacity: Bool
+    ) -> TransformOffset {
+        let restTL = AnimPair(a: resting.topLeft.x, b: resting.topLeft.y)
+        let restSize = AnimPair(a: resting.width, b: resting.height)
+        let tl = position?.sample(at: frame, fallback: restTL) ?? restTL
+        let size = scale?.sample(at: frame, fallback: restSize) ?? restSize
+        let rot = rotation?.sample(at: frame, fallback: resting.rotation) ?? resting.rotation
+        let op = opacity?.sample(at: frame, fallback: restingOpacity) ?? restingOpacity
+        let scaleMult = resting.width != 0 ? size.a / resting.width : 1
+        return TransformOffset(
+            translateX: (tl.a + size.a / 2) - resting.centerX,
+            translateY: (tl.b + size.b / 2) - resting.centerY,
+            scale: scaleMult,
+            rotate: rot - resting.rotation,
+            opacity: hasOpacity ? op : nil
+        )
+    }
+
+    private static func earliestEasing(
+        at frame: Int,
+        position: KeyframeTrack<AnimPair>?, scale: KeyframeTrack<AnimPair>?,
+        rotation: KeyframeTrack<Double>?, opacity: KeyframeTrack<Double>?
+    ) -> Interpolation? {
+        if let kf = position?.keyframes.first(where: { $0.frame == frame }) { return kf.interpolationOut }
+        if let kf = scale?.keyframes.first(where: { $0.frame == frame }) { return kf.interpolationOut }
+        if let kf = rotation?.keyframes.first(where: { $0.frame == frame }) { return kf.interpolationOut }
+        if let kf = opacity?.keyframes.first(where: { $0.frame == frame }) { return kf.interpolationOut }
+        return nil
+    }
+}
