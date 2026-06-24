@@ -204,4 +204,31 @@ struct TemplateApplyToolTests {
         let result = await h.runRaw("apply_template", args: ["clipIds": [clipId]])
         #expect(result.isError == true)
     }
+
+    @Test func replacesExistingMotionAnimation() async throws {
+        let h = ToolHarness()
+        h.executor.templateStore = tempStore()
+        let clipId = videoClip(h)
+
+        // Give the clip a position animation.
+        _ = await h.runRaw("set_keyframes", args: [
+            "clipId": clipId, "property": "position",
+            "keyframes": [[0, -1.0, 0.0], [15, 0.0, 0.0]],
+        ])
+
+        // Save a FADE-only template (no position channel).
+        let fadeTemplate = EditTemplate(
+            id: "fade1", name: "Fade", createdAt: Date(timeIntervalSince1970: 2),
+            motion: MotionPreset(
+                span: MotionSpan(anchor: .clipStart, frames: 10),
+                start: TransformOffset(opacity: 0), end: .identity))
+        try h.executor.templateStore.save(fadeTemplate)
+
+        _ = try await h.runOK("apply_template", args: ["templateId": "fade1", "clipIds": [clipId]])
+
+        let loc = try #require(h.editor.findClip(id: clipId))
+        let clip = h.editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex]
+        #expect(clip.positionTrack == nil)
+        #expect(clip.opacityTrack?.keyframes.count == 2)
+    }
 }

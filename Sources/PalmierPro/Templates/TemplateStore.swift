@@ -41,9 +41,15 @@ final class TemplateStore {
             return
         }
         templates = urls.compactMap { url -> EditTemplate? in
-            guard url.pathExtension == "json", let data = try? Data(contentsOf: url) else { return nil }
+            guard url.pathExtension == "json" else { return nil }
             do {
-                return try Self.decoder.decode(EditTemplate.self, from: data)
+                let data = try Data(contentsOf: url)
+                let decoded = try Self.decoder.decode(EditTemplate.self, from: data)
+                guard decoded.version <= EditTemplate.currentVersion else {
+                    Log.templates.warning("load skipped newer-schema file=\(url.lastPathComponent) version=\(decoded.version)")
+                    return nil
+                }
+                return decoded
             } catch {
                 Log.templates.warning("load skipped file=\(url.lastPathComponent): \(error.localizedDescription)")
                 return nil

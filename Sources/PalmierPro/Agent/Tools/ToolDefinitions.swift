@@ -485,7 +485,7 @@ enum ToolDefinitions {
         ),
         AgentTool(
             name: .applyTemplate,
-            description: "Apply a motion template to one or more clips, writing keyframes (undoable). Provide EITHER `templateId` (a saved template from list_templates) OR an inline `motion` object (same shape as create_template's span/easing/start/end) to preview without saving. `overrides` tweak this application only. Each clip is animated relative to its own resting transform, so the same template adapts to differently-placed clips. Only the channels the template animates are set; other channels are left as-is. Audio clips are rejected.",
+            description: "Apply a motion template to one or more clips, writing keyframes (undoable). Provide EITHER `templateId` (a saved template from list_templates) OR an inline `motion` object (same shape as create_template's span/easing/start/end) to preview without saving. `overrides` tweak this application only. Each clip is animated relative to its own resting transform, so the same template adapts to differently-placed clips. Audio clips are rejected. Replaces the clip's motion animation (position/scale/rotation/opacity keyframes) with the template's; channels the template does not animate are cleared.",
             inputSchema: objectSchema(
                 properties: [
                     "templateId": ["type": "string", "description": "Id of a saved template (from list_templates)."],
