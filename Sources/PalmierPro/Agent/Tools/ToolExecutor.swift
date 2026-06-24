@@ -20,6 +20,7 @@ final class ToolExecutor {
     private var agentUndoStack: [String] = []
     var feedbackState = FeedbackState()
     var lastTranscriptContext: TranscriptionToolContext?
+    lazy var templateStore: TemplateStore = .shared
 
     func execute(name: String, args: [String: Any]) async -> ToolResult {
         guard let tool = ToolName(rawValue: name) else {
@@ -105,6 +106,7 @@ final class ToolExecutor {
         case .removeWords:   return try await removeWords(editor, args)
         case .syncAudio:     return try await syncAudio(editor, args)
         case .undo:          return try undo(editor)
+        case .listTemplates: return try listTemplates(editor)
         case .addTexts:      return try addTexts(editor, args)
         case .updateText:    return try updateText(editor, args)
         case .addCaptions:   return try await addCaptions(editor, args)

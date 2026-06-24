@@ -17,6 +17,7 @@ enum ToolName: String, CaseIterable, Sendable {
     case removeWords = "remove_words"
     case syncAudio = "sync_audio"
     case undo = "undo"
+    case listTemplates = "list_templates"
     case addTexts = "add_texts"
     case updateText = "update_text"
     case addCaptions = "add_captions"
@@ -417,6 +418,11 @@ enum ToolDefinitions {
         AgentTool(
             name: .undo,
             description: "Reverts the assistant's most recent timeline edit (a cut, move, trim, split, or clip/text/caption add) as one step. The recovery path when an edit went too far — e.g. a ripple_delete_ranges removed more than intended. Verify a cut first (get_transcript reflects the post-cut audio), then undo if it overshot, then retry with corrected ranges.\n\nUndoes only edits the assistant made this session, most-recent-first — it never touches the user's own manual edits, and refuses if the latest change wasn't the assistant's. After undoing, the timeline is restored to its state before that edit; the ids/frames the edit returned are no longer valid, so re-read with get_timeline or get_transcript if you'll edit again. Takes no arguments.",
+            inputSchema: objectSchema()
+        ),
+        AgentTool(
+            name: .listTemplates,
+            description: "List saved edit templates (reusable motion presets) from the user's global template library. Returns id, name, kind, and summary per template. Use this to discover templates before applying one, or to answer \"what templates do I have?\".",
             inputSchema: objectSchema()
         ),
         AgentTool(
