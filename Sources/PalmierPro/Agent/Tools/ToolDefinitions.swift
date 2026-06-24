@@ -18,6 +18,7 @@ enum ToolName: String, CaseIterable, Sendable {
     case undo = "undo"
     case listTemplates = "list_templates"
     case createTemplate = "create_template"
+    case captureTemplate = "capture_template"
     case addTexts = "add_texts"
     case addCaptions = "add_captions"
     case exportProject = "export_project"
@@ -407,6 +408,18 @@ enum ToolDefinitions {
                     "previewClipId": ["type": "string", "description": "Optional clip to also apply the template to immediately."],
                 ],
                 required: ["name"]
+            )
+        ),
+        AgentTool(
+            name: .captureTemplate,
+            description: "Save a clip's existing motion (its position/scale/rotation/opacity keyframes) as a reusable template in the user's library. Use this when the user has animated a clip the way they want and asks to save it. The motion is stored RELATIVE to the clip's resting transform, so it can be re-applied to any clip. Fails if the clip has no motion keyframes. Captures the start and end of the animation (a two-state simplification).",
+            inputSchema: objectSchema(
+                properties: [
+                    "name": ["type": "string", "description": "Template name."],
+                    "clipId": ["type": "string", "description": "The animated clip to capture from."],
+                    "summary": ["type": "string", "description": "Optional one-line description."],
+                ],
+                required: ["name", "clipId"]
             )
         ),
         AgentTool(

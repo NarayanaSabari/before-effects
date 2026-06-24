@@ -79,3 +79,45 @@ struct TemplateCreateToolTests {
         #expect(result.isError == true)
     }
 }
+
+@Suite("capture_template tool")
+@MainActor
+struct TemplateCaptureToolTests {
+    private func animatedClip(_ h: ToolHarness) -> String {
+        _ = h.editor.insertTrack(at: 0, type: .video)
+        let asset = h.addAsset(type: .video)
+        return h.editor.placeClip(asset: asset, trackIndex: 0, startFrame: 0, durationFrames: 60)[0]
+    }
+
+    @Test func capturesKeyframesIntoTemplate() async throws {
+        let h = ToolHarness()
+        h.executor.templateStore = tempStore()
+        let clipId = animatedClip(h)
+        // Animate the clip first via set_keyframes (position slides in from left).
+        _ = await h.runRaw("set_keyframes", args: [
+            "clipId": clipId, "property": "position",
+            "keyframes": [[0, -1.0, 0.0], [15, 0.0, 0.0]],
+        ])
+        _ = try await h.runOK("capture_template", args: ["name": "Captured Slide", "clipId": clipId])
+        let t = try #require(h.executor.templateStore.templates.first)
+        #expect(t.name == "Captured Slide")
+        #expect(t.motion.span.anchor == .clipStart)
+        #expect(t.motion.span.frames == 15)
+    }
+
+    @Test func rejectsClipWithoutKeyframes() async throws {
+        let h = ToolHarness()
+        h.executor.templateStore = tempStore()
+        let clipId = animatedClip(h)
+        let result = await h.runRaw("capture_template", args: ["name": "Empty", "clipId": clipId])
+        #expect(result.isError == true)
+        #expect(h.executor.templateStore.templates.isEmpty)
+    }
+
+    @Test func rejectsMissingClip() async throws {
+        let h = ToolHarness()
+        h.executor.templateStore = tempStore()
+        let result = await h.runRaw("capture_template", args: ["name": "X", "clipId": "nope"])
+        #expect(result.isError == true)
+    }
+}
