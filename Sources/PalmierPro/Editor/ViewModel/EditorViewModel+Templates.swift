@@ -48,7 +48,7 @@ extension EditorViewModel {
         return (s, e)
     }
 
-    /// Retimes a clip's applied motion to a new window, remapping its keyframes. Undoable.
+    /// Retimes a clip's applied motion to a new window, regenerating its keyframes. Undoable.
     func setMotionWindow(clipId: String, startFrame: Int, endFrame: Int) {
         guard let basis = clipFor(id: clipId), let am = basis.appliedMotion else { return }
         let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
@@ -66,7 +66,7 @@ extension EditorViewModel {
         undoManager?.setActionName("Adjust Animation")
     }
 
-    /// Live retime during a drag: remaps from `basis` (the pre-drag clip) so steps don't compound.
+    /// Live retime during a drag: regenerates from `basis` (the pre-drag clip) so steps don't compound.
     func applyMotionWindowLive(clipId: String, startFrame: Int, endFrame: Int, basis: Clip) {
         guard let am = basis.appliedMotion else { return }
         let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
