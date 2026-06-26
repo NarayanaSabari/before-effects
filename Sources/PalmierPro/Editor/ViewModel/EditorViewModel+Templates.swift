@@ -52,11 +52,15 @@ extension EditorViewModel {
     func setMotionWindow(clipId: String, startFrame: Int, endFrame: Int) {
         guard let basis = clipFor(id: clipId), let am = basis.appliedMotion else { return }
         let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
+        let t = MotionPresetMapping.retime(
+            position: basis.positionTrack, scale: basis.scaleTrack, rotation: basis.rotationTrack, opacity: basis.opacityTrack,
+            resting: basis.transform, restingOpacity: basis.opacity,
+            oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
         commitClipProperty(clipId: clipId) { c in
-            c.positionTrack = MotionRetime.remap(basis.positionTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.scaleTrack = MotionRetime.remap(basis.scaleTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.rotationTrack = MotionRetime.remap(basis.rotationTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.opacityTrack = MotionRetime.remap(basis.opacityTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.positionTrack = t.position
+            c.scaleTrack = t.scale
+            c.rotationTrack = t.rotation
+            c.opacityTrack = t.opacity
             c.appliedMotion = AppliedMotion(name: am.name, startFrame: s, endFrame: e)
         }
         undoManager?.setActionName("Adjust Animation")
@@ -66,11 +70,15 @@ extension EditorViewModel {
     func applyMotionWindowLive(clipId: String, startFrame: Int, endFrame: Int, basis: Clip) {
         guard let am = basis.appliedMotion else { return }
         let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
+        let t = MotionPresetMapping.retime(
+            position: basis.positionTrack, scale: basis.scaleTrack, rotation: basis.rotationTrack, opacity: basis.opacityTrack,
+            resting: basis.transform, restingOpacity: basis.opacity,
+            oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
         applyClipProperty(clipId: clipId) { c in
-            c.positionTrack = MotionRetime.remap(basis.positionTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.scaleTrack = MotionRetime.remap(basis.scaleTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.rotationTrack = MotionRetime.remap(basis.rotationTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
-            c.opacityTrack = MotionRetime.remap(basis.opacityTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.positionTrack = t.position
+            c.scaleTrack = t.scale
+            c.rotationTrack = t.rotation
+            c.opacityTrack = t.opacity
             c.appliedMotion = AppliedMotion(name: am.name, startFrame: s, endFrame: e)
         }
     }
