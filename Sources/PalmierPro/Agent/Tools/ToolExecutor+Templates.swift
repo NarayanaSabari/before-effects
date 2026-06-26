@@ -21,7 +21,7 @@ extension ToolExecutor {
         if let cid = input.previewClipId {
             var ok = false
             withUndoGroup(editor, actionName: "Preview Template (Agent)") {
-                ok = writePresetTracks(editor, preset: preset, clipId: cid)
+                ok = writePresetTracks(editor, preset: preset, clipId: cid, name: input.name)
             }
             note = ok ? " Previewed on clip \(cid)." : " (Preview skipped: clip not found or not animatable.)"
         }
@@ -33,8 +33,8 @@ extension ToolExecutor {
     /// Writes a preset's keyframe tracks onto a clip. Returns false if the clip is missing or
     /// is an audio clip. Does NOT open an undo group — the caller wraps in `withUndoGroup`.
     @discardableResult
-    func writePresetTracks(_ editor: EditorViewModel, preset: MotionPreset, clipId: String) -> Bool {
-        editor.applyMotionPreset(preset, toClipId: clipId)
+    func writePresetTracks(_ editor: EditorViewModel, preset: MotionPreset, clipId: String, name: String?) -> Bool {
+        editor.applyMotionPreset(preset, toClipId: clipId, name: name)
     }
 }
 
@@ -119,11 +119,14 @@ extension ToolExecutor {
         guard !input.clipIds.isEmpty else { throw ToolError("apply_template: clipIds must not be empty") }
 
         var preset: MotionPreset
+        var templateName: String?
         if let id = input.templateId {
             guard let t = templateStore.template(id: id) else { throw ToolError("Template not found: \(id)") }
             preset = t.motion
+            templateName = t.name
         } else if let m = input.motion {
             preset = try m.toModel()
+            templateName = nil
         } else {
             throw ToolError("apply_template: provide either 'templateId' or 'motion'")
         }
@@ -144,7 +147,7 @@ extension ToolExecutor {
         }
 
         withUndoGroup(editor, actionName: "Apply Template (Agent)") {
-            for cid in input.clipIds { _ = writePresetTracks(editor, preset: preset, clipId: cid) }
+            for cid in input.clipIds { _ = writePresetTracks(editor, preset: preset, clipId: cid, name: templateName) }
         }
         let payload: [String: Any] = ["applied": input.clipIds.count]
         let data = try JSONSerialization.data(withJSONObject: payload)

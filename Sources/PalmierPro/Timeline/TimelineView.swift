@@ -1121,7 +1121,7 @@ final class TimelineView: NSView {
         guard let clip = editor.clip(onTrackIndex: geo.trackAt(y: point.y), atFrame: geo.frameAt(x: point.x)),
               clip.mediaType != .audio else { return false }
         editor.undoManager?.beginUndoGrouping()
-        _ = editor.applyMotionPreset(template.motion, toClipId: clip.id)
+        _ = editor.applyMotionPreset(template.motion, toClipId: clip.id, name: template.name)
         editor.undoManager?.endUndoGrouping()
         editor.undoManager?.setActionName("Apply Template")
         return true

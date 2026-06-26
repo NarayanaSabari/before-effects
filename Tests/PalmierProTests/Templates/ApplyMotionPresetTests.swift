@@ -20,7 +20,7 @@ struct ApplyMotionPresetTests {
 
     @Test func appliesSlideInToVideoClip() {
         let e = editor([Fixtures.videoTrack(clips: [Fixtures.clip(id: "c1", start: 0, duration: 60)])])
-        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "c1") == true)
+        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "c1", name: nil) == true)
         let kf = e.timeline.tracks[0].clips[0].positionTrack?.keyframes
         #expect(kf?.count == 2)
         #expect(kf?[0].value == AnimPair(a: -1, b: 0))
@@ -29,20 +29,20 @@ struct ApplyMotionPresetTests {
 
     @Test func rejectsAudioClip() {
         let e = editor([Fixtures.audioTrack(clips: [Fixtures.clip(id: "a1", mediaType: .audio, start: 0, duration: 60)])])
-        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "a1") == false)
+        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "a1", name: nil) == false)
         #expect(e.timeline.tracks[0].clips[0].positionTrack == nil)
     }
 
     @Test func rejectsMissingClip() {
         let e = editor()
-        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "ghost") == false)
+        #expect(e.applyMotionPreset(slideInLeft(), toClipId: "ghost", name: nil) == false)
     }
 
     @Test func replaceSemanticsClearsUnrelatedTrack() {
         var clip = Fixtures.clip(id: "c1", start: 0, duration: 60)
         clip.opacityTrack = KeyframeTrack(keyframes: [Keyframe(frame: 0, value: 0.3)])
         let e = editor([Fixtures.videoTrack(clips: [clip])])
-        _ = e.applyMotionPreset(slideInLeft(), toClipId: "c1")
+        _ = e.applyMotionPreset(slideInLeft(), toClipId: "c1", name: nil)
         // Slide preset has no opacity channel → opacity track replaced with nil.
         #expect(e.timeline.tracks[0].clips[0].opacityTrack == nil)
     }
