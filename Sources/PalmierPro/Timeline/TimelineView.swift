@@ -73,6 +73,9 @@ final class TimelineView: NSView {
     var externalDragSegments: [String: ClosedRange<Double>] = [:]
     var externalDragFrame: Int = 0
 
+    /// Clip id highlighted as the apply target while dragging a template payload.
+    var templateDropTargetClipId: String?
+
     private var externalSnapState = SnapEngine.SnapState()
 
     private var externalDragIsRippleInsert: Bool = false
@@ -206,6 +209,15 @@ final class TimelineView: NSView {
         drawTrackBackgrounds(geometry: geo, context: ctx)
         drawTimelineRangeSelectionTrackFill(geometry: geo, context: ctx)
         drawClips(geometry: geo, dirtyRect: dirtyRect, context: ctx)
+        if let id = templateDropTargetClipId, let loc = editor.findClip(id: id) {
+            let clip = editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex]
+            let rect = geo.clipRect(for: clip, trackIndex: loc.trackIndex)
+            ctx.setFillColor(NSColor.controlAccentColor.withAlphaComponent(0.18).cgColor)
+            ctx.fill(rect)
+            ctx.setStrokeColor(NSColor.controlAccentColor.cgColor)
+            ctx.setLineWidth(2)
+            ctx.stroke(rect.insetBy(dx: 1, dy: 1))
+        }
         drawGapSelection(geometry: geo, context: ctx)
         syncGeneratingClipOverlays(geometry: geo)
 
@@ -909,9 +921,48 @@ final class TimelineView: NSView {
         ))
     }
 
+    private func templatePayload(from sender: any NSDraggingInfo) -> String? {
+        guard let line = sender.draggingPasteboard.string(forType: .string) else { return nil }
+        return TemplateDragPayload.templateId(fromDragString: line)
+    }
+
+    /// Updates `templateDropTargetClipId` from the cursor and returns the drag operation:
+    /// `.copy` over a non-audio clip, `[]` (no drop) over a gap or audio clip.
+    private func updateTemplateDropTarget(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        let point = convert(sender.draggingLocation, from: nil)
+        let geo = geometry
+        let clip = editor.clip(onTrackIndex: geo.trackAt(y: point.y), atFrame: geo.frameAt(x: point.x))
+        if let clip, clip.mediaType != .audio {
+            templateDropTargetClipId = clip.id
+            needsDisplay = true
+            return .copy
+        }
+        templateDropTargetClipId = nil
+        needsDisplay = true
+        return []
+    }
+
+    private func performTemplateDrop(_ sender: any NSDraggingInfo, templateId: String) -> Bool {
+        let point = convert(sender.draggingLocation, from: nil)
+        let geo = geometry
+        templateDropTargetClipId = nil
+        needsDisplay = true
+        guard let template = TemplateStore.shared.template(id: templateId) else { return false }
+        guard let clip = editor.clip(onTrackIndex: geo.trackAt(y: point.y), atFrame: geo.frameAt(x: point.x)),
+              clip.mediaType != .audio else { return false }
+        editor.undoManager?.beginUndoGrouping()
+        _ = editor.applyMotionPreset(template.motion, toClipId: clip.id)
+        editor.undoManager?.endUndoGrouping()
+        editor.undoManager?.setActionName("Apply Template")
+        return true
+    }
+
     // MARK: - Drop target (drag from media panel)
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if templatePayload(from: sender) != nil {
+            return updateTemplateDropTarget(sender)
+        }
         let point = convert(sender.draggingLocation, from: nil)
         let geo = geometry
         if externalDragAssets == nil, let urlString = sender.draggingPasteboard.string(forType: .string) {
@@ -927,6 +978,9 @@ final class TimelineView: NSView {
     }
 
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if templatePayload(from: sender) != nil {
+            return updateTemplateDropTarget(sender)
+        }
         let point = convert(sender.draggingLocation, from: nil)
         let geo = geometry
         externalDropTarget = geo.dropTargetAt(y: point.y)
@@ -937,6 +991,10 @@ final class TimelineView: NSView {
     }
 
     override func draggingExited(_ sender: (any NSDraggingInfo)?) {
+        if templateDropTargetClipId != nil {
+            templateDropTargetClipId = nil
+            needsDisplay = true
+        }
         externalDropTarget = nil
         externalDragAssets = nil
         externalDragSegments = [:]
@@ -972,6 +1030,9 @@ final class TimelineView: NSView {
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        if let templateId = templatePayload(from: sender) {
+            return performTemplateDrop(sender, templateId: templateId)
+        }
         let geo = geometry
         let point = convert(sender.draggingLocation, from: nil)
         let cursorTarget = geo.dropTargetAt(y: point.y)
