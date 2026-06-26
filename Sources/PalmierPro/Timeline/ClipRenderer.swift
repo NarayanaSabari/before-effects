@@ -151,7 +151,7 @@ enum ClipRenderer {
         }
 
         if let motion = clip.appliedMotion {
-            drawMotionBadge(motion, in: rect, selected: motionSelected, context: context)
+            drawMotionBar(motion, in: rect, durationFrames: clip.durationFrames, selected: motionSelected, context: context)
         }
 
         if showDetailChrome, let linkOffset, linkOffset != 0 {
@@ -666,15 +666,20 @@ enum ClipRenderer {
         context.restoreGState()
     }
 
-    private static func drawMotionBadge(_ motion: AppliedMotion, in clipRect: NSRect, selected: Bool, context: CGContext) {
-        guard MotionBadge.isVisible(clipWidth: clipRect.width) else { return }
-        let badge = MotionBadge.rect(in: clipRect, anchor: motion.anchor)
+    private static func drawMotionBar(_ motion: AppliedMotion, in clipRect: NSRect, durationFrames: Int, selected: Bool, context: CGContext) {
+        let bar = MotionBar.barRect(in: clipRect, startFrame: motion.startFrame, endFrame: motion.endFrame, clipDurationFrames: durationFrames)
+        guard MotionBar.isVisible(barWidth: bar.width) else { return }
         let radius: CGFloat = 3
-        let path = CGPath(roundedRect: badge, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        let path = CGPath(roundedRect: bar, cornerWidth: radius, cornerHeight: radius, transform: nil)
         context.saveGState()
-        context.setFillColor(AppTheme.Accent.timecodeNSColor.withAlphaComponent(selected ? 0.95 : 0.7).cgColor)
+        context.setFillColor(AppTheme.Accent.timecodeNSColor.withAlphaComponent(selected ? 0.85 : 0.55).cgColor)
         context.addPath(path)
         context.fillPath()
+
+        context.setFillColor(NSColor.white.withAlphaComponent(selected ? 0.95 : 0.7).cgColor)
+        context.fill(MotionBar.leftHandleRect(bar))
+        context.fill(MotionBar.rightHandleRect(bar))
+
         if selected {
             context.setStrokeColor(NSColor.white.withAlphaComponent(0.95).cgColor)
             context.setLineWidth(1.5)
@@ -682,17 +687,18 @@ enum ClipRenderer {
             context.strokePath()
         }
 
-        let showName = MotionBadge.showsName(clipWidth: clipRect.width)
-        let label = showName ? "✦ \(motion.name)" : "✦"
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: AppTheme.FontSize.xxs, weight: .semibold),
-            .foregroundColor: NSColor.white,
-        ]
-        let str = NSAttributedString(string: label, attributes: attrs)
-        let size = str.size()
-        let origin = NSPoint(x: badge.minX + 4, y: badge.minY + (badge.height - size.height) / 2)
-        context.clip(to: badge.insetBy(dx: 3, dy: 0))
-        str.draw(at: origin)
+        let bodyWidth = bar.width - MotionBar.handleWidth * 2
+        if bodyWidth > 28 {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: AppTheme.FontSize.xxs, weight: .semibold),
+                .foregroundColor: NSColor.white,
+            ]
+            let str = NSAttributedString(string: "✦ \(motion.name)", attributes: attrs)
+            let size = str.size()
+            let origin = NSPoint(x: bar.minX + MotionBar.handleWidth + 3, y: bar.minY + (bar.height - size.height) / 2)
+            context.clip(to: bar.insetBy(dx: MotionBar.handleWidth + 2, dy: 0))
+            str.draw(at: origin)
+        }
         context.restoreGState()
     }
 

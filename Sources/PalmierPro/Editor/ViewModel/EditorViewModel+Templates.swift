@@ -13,7 +13,8 @@ extension EditorViewModel {
         let tracks = MotionPresetMapping.tracks(
             for: preset, resting: clip.transform, restingOpacity: clip.opacity,
             clipDurationFrames: clip.durationFrames)
-        let applied = name.map { AppliedMotion(name: $0, anchor: preset.span.anchor, frames: preset.span.frames) }
+        let window = name.map { _ in MotionPresetMapping.frameRange(for: preset.span, clipDurationFrames: clip.durationFrames) }
+        let applied = name.flatMap { n in window.map { AppliedMotion(name: n, startFrame: $0.start, endFrame: $0.end) } }
         commitClipProperty(clipId: clipId) { c in
             c.positionTrack = tracks.position
             c.scaleTrack = tracks.scale
@@ -35,6 +36,30 @@ extension EditorViewModel {
             c.appliedMotion = nil
         }
         undoManager?.setActionName("Remove Animation")
+    }
+
+    /// Clamps a window to `[0, duration]` with a minimum length of `MotionBar.minFrames`.
+    static func clampWindow(start: Int, end: Int, duration: Int) -> (Int, Int) {
+        let minLen = MotionBar.minFrames
+        let d = max(duration, minLen)
+        var s = max(0, min(start, d - minLen))
+        let e = min(d, max(end, s + minLen))
+        if e - s < minLen { s = max(0, e - minLen) }
+        return (s, e)
+    }
+
+    /// Retimes a clip's applied motion to a new window, remapping its keyframes. Undoable.
+    func setMotionWindow(clipId: String, startFrame: Int, endFrame: Int) {
+        guard let basis = clipFor(id: clipId), let am = basis.appliedMotion else { return }
+        let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
+        commitClipProperty(clipId: clipId) { c in
+            c.positionTrack = MotionRetime.remap(basis.positionTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.scaleTrack = MotionRetime.remap(basis.scaleTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.rotationTrack = MotionRetime.remap(basis.rotationTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.opacityTrack = MotionRetime.remap(basis.opacityTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.appliedMotion = AppliedMotion(name: am.name, startFrame: s, endFrame: e)
+        }
+        undoManager?.setActionName("Adjust Animation")
     }
 
     /// The clip on the given track index occupying `frame` (half-open
