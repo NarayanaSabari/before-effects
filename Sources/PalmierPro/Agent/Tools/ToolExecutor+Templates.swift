@@ -34,18 +34,7 @@ extension ToolExecutor {
     /// is an audio clip. Does NOT open an undo group — the caller wraps in `withUndoGroup`.
     @discardableResult
     func writePresetTracks(_ editor: EditorViewModel, preset: MotionPreset, clipId: String) -> Bool {
-        guard let loc = editor.findClip(id: clipId) else { return false }
-        let clip = editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex]
-        guard clip.mediaType != .audio else { return false }
-        let tracks = MotionPresetMapping.tracks(
-            for: preset, resting: clip.transform, restingOpacity: clip.opacity, clipDurationFrames: clip.durationFrames)
-        editor.commitClipProperty(clipId: clipId) { c in
-            c.positionTrack = tracks.position
-            c.scaleTrack = tracks.scale
-            c.rotationTrack = tracks.rotation
-            c.opacityTrack = tracks.opacity
-        }
-        return true
+        editor.applyMotionPreset(preset, toClipId: clipId)
     }
 }
 
