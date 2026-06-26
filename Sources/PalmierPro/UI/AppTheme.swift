@@ -135,6 +135,7 @@ enum AppTheme {
         static let success = NSColor(red: 0x4F/255.0, green: 0xB8/255.0, blue: 0x5F/255.0, alpha: 1)
 
         static var successColor: Color { Color(success) }
+        static let green = Color(red: 0.32, green: 0.82, blue: 0.36)
     }
 
     // MARK: - Text
