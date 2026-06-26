@@ -24,7 +24,10 @@ struct SetMotionWindowTests {
         e.setMotionWindow(clipId: "c1", startFrame: 60, endFrame: 330) // 330 > 300 → clamps to 300
         let c = e.timeline.tracks[0].clips[0]
         #expect(c.appliedMotion == AppliedMotion(name: "Slide From Left", startFrame: 60, endFrame: 300))
-        #expect(c.positionTrack?.keyframes.map(\.frame) == [60, 300])
+        #expect(c.positionTrack?.keyframes.map(\.frame) == [0, 60, 300])
+        // before the window the clip rests; at the window start it is off-screen
+        #expect(c.positionTrack?.sample(at: 10, fallback: AnimPair(a: 9, b: 9)) == AnimPair(a: 0, b: 0))
+        #expect(c.positionTrack?.sample(at: 60, fallback: AnimPair(a: 0, b: 0)) == AnimPair(a: -1, b: 0))
     }
 
     @Test func clampsMinimumLength() {
