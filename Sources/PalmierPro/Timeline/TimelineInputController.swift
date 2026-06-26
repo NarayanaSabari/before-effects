@@ -403,7 +403,7 @@ final class TimelineInputController {
             }
             return
 
-        case .motionWindow(var drag):
+        case .motionWindow(let drag):
             guard let loc = editor.findClip(id: drag.clipId) else { return }
             let relFrame = frame - editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].startFrame
             let minLen = MotionBar.minFrames
@@ -420,8 +420,6 @@ final class TimelineInputController {
                 newE = drag.originEnd + delta
             }
             editor.applyMotionWindowLive(clipId: drag.clipId, startFrame: newS, endFrame: newE, basis: drag.basis)
-            drag.changed = true
-            dragState = .motionWindow(drag)
             view.needsDisplay = true
 
         case .idle:
@@ -522,7 +520,9 @@ final class TimelineInputController {
             editor.keepValidTimelineRangeOrClear()
 
         case .motionWindow(let drag):
-            if drag.changed {
+            let window = editor.clipFor(id: drag.clipId)?.appliedMotion
+            let moved = window.map { $0.startFrame != drag.originStart || $0.endFrame != drag.originEnd } ?? false
+            if moved {
                 editor.commitClipProperty(clipId: drag.clipId) { _ in }
                 editor.undoManager?.setActionName("Adjust Animation")
             } else {

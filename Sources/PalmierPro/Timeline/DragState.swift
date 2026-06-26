@@ -20,7 +20,6 @@ enum DragState {
         let originStart: Int
         let originEnd: Int
         let basis: Clip
-        var changed: Bool = false
     }
 
     struct AudioVolumeKfDrag {
