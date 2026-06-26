@@ -1,8 +1,8 @@
 import Foundation
 
-/// Records that a template was applied to a clip, so the timeline can badge and remove it as a unit.
+/// Records a template applied to a clip as a clip-relative window the timeline can draw and retime.
 struct AppliedMotion: Codable, Sendable, Equatable {
     var name: String
-    var anchor: MotionAnchor
-    var frames: Int
+    var startFrame: Int
+    var endFrame: Int
 }

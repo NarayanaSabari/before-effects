@@ -12,10 +12,10 @@ struct AppliedMotionModelTests {
 
     @Test func roundTripsWithMotion() throws {
         var clip = Fixtures.clip(id: "c1", start: 0, duration: 60)
-        clip.appliedMotion = AppliedMotion(name: "Slide From Left", anchor: .clipStart, frames: 15)
+        clip.appliedMotion = AppliedMotion(name: "Slide From Left", startFrame: 0, endFrame: 15)
         let data = try JSONEncoder().encode(clip)
         let decoded = try JSONDecoder().decode(Clip.self, from: data)
-        #expect(decoded.appliedMotion == AppliedMotion(name: "Slide From Left", anchor: .clipStart, frames: 15))
+        #expect(decoded.appliedMotion == AppliedMotion(name: "Slide From Left", startFrame: 0, endFrame: 15))
     }
 
     @Test func encodesNothingWhenNil() throws {

@@ -35,3 +35,4 @@ models/*/.venv/
 models/*/build*/
 models/*/checkpoint*
 models/*/convert*.log
+.pi/extensions/emdash-hook.ts

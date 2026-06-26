@@ -77,7 +77,7 @@ final class TimelineInputController {
             return
         }
 
-        if let badgeHit = hitTestMotionBadge(at: point, trackIndex: trackIndex, geometry: geometry) {
+        if let badgeHit = hitTestMotionBar(at: point, trackIndex: trackIndex, geometry: geometry) {
             let clip = editor.timeline.tracks[badgeHit.trackIndex].clips[badgeHit.clipIndex]
             editor.selectedMotionClipId = clip.id
             editor.selectedClipIds.removeAll()
@@ -736,16 +736,15 @@ final class TimelineInputController {
         return nil
     }
 
-    /// The clip whose applied-motion badge is under `point`, if any.
-    func hitTestMotionBadge(at point: NSPoint, trackIndex: Int, geometry: TimelineGeometry) -> ClipLocation? {
+    /// The clip whose applied-motion bar is under `point`, if any.
+    func hitTestMotionBar(at point: NSPoint, trackIndex: Int, geometry: TimelineGeometry) -> ClipLocation? {
         guard editor.timeline.tracks.indices.contains(trackIndex) else { return nil }
         for (ci, clip) in editor.timeline.tracks[trackIndex].clips.enumerated() {
-            guard let motion = clip.appliedMotion else { continue }
+            guard let m = clip.appliedMotion else { continue }
             let clipRect = geometry.clipRect(for: clip, trackIndex: trackIndex)
-            guard MotionBadge.isVisible(clipWidth: clipRect.width) else { continue }
-            if MotionBadge.rect(in: clipRect, anchor: motion.anchor).contains(point) {
-                return ClipLocation(trackIndex: trackIndex, clipIndex: ci)
-            }
+            let bar = MotionBar.barRect(in: clipRect, startFrame: m.startFrame, endFrame: m.endFrame, clipDurationFrames: clip.durationFrames)
+            guard MotionBar.isVisible(barWidth: bar.width) else { continue }
+            if bar.contains(point) { return ClipLocation(trackIndex: trackIndex, clipIndex: ci) }
         }
         return nil
     }
