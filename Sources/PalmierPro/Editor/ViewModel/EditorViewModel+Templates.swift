@@ -62,6 +62,19 @@ extension EditorViewModel {
         undoManager?.setActionName("Adjust Animation")
     }
 
+    /// Live retime during a drag: remaps from `basis` (the pre-drag clip) so steps don't compound.
+    func applyMotionWindowLive(clipId: String, startFrame: Int, endFrame: Int, basis: Clip) {
+        guard let am = basis.appliedMotion else { return }
+        let (s, e) = Self.clampWindow(start: startFrame, end: endFrame, duration: basis.durationFrames)
+        applyClipProperty(clipId: clipId) { c in
+            c.positionTrack = MotionRetime.remap(basis.positionTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.scaleTrack = MotionRetime.remap(basis.scaleTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.rotationTrack = MotionRetime.remap(basis.rotationTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.opacityTrack = MotionRetime.remap(basis.opacityTrack, oldStart: am.startFrame, oldEnd: am.endFrame, newStart: s, newEnd: e)
+            c.appliedMotion = AppliedMotion(name: am.name, startFrame: s, endFrame: e)
+        }
+    }
+
     /// The clip on the given track index occupying `frame` (half-open
     /// `[startFrame, startFrame + durationFrames)`), or nil for a gap / invalid track.
     func clip(onTrackIndex trackIndex: Int, atFrame frame: Int) -> Clip? {

@@ -10,6 +10,18 @@ enum DragState {
     case fadeKnee(FadeKneeDrag)
     case marquee(MarqueeDrag)
     case timelineRange(TimelineRangeDrag)
+    case motionWindow(MotionWindowDrag)
+
+    struct MotionWindowDrag {
+        let clipId: String
+        let trackIndex: Int
+        let part: MotionBar.Part
+        let grabFrame: Int
+        let originStart: Int
+        let originEnd: Int
+        let basis: Clip
+        var changed: Bool = false
+    }
 
     struct AudioVolumeKfDrag {
         let clipId: String
