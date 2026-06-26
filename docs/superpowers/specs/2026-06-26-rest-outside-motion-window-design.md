@@ -20,52 +20,61 @@ the pre-window region shows the off-screen frame as a black screen.
 
 ## Goal / behavior (Option A, locked)
 
-Outside the window the clip is at **rest** (its static transform — normal/visible). Inside the
-window it animates from→to. For a slide-in with window `[s, e]` on a clip of duration `d`:
+**Before** the window the clip is at **rest** (its static transform — normal/visible). Inside the
+window it animates from→to; **after** the window it holds the end state (the existing behavior —
+which is rest for an entrance). For a slide-in with window `[s, e]` on a clip of duration `d`:
 
 - frames `0 … s` → **rest** (normal, visible)
 - frame `s` → the motion's start state (off-screen left) — "starts from the left on entering"
 - frames `s … e` → slides in to rest
-- frames `e … d` → **rest**
+- frames `e … d` → holds the end state (rest, for a slide-in)
 
 The brief snap at `s` (rest → off-screen, then slide back to rest) is intended: "when the timeline
 enters the slide, it starts from the left."
 
-**Non-goals:** changing global keyframe sampling (only motion-preset tracks change); per-preset
-"after" tuning for non-entrance presets (see Edge cases); snapping; multiple motions per clip.
+**Why only a pre-window anchor:** the bug is the *pre*-window region holding the off-screen "from"
+state. A symmetric post-window "rest after" anchor would wrongly make hold-style presets (e.g.
+punch-in to a held zoom) snap back to rest at the clip end, and would change existing presets'
+keyframes. So we add a rest anchor **before** the window only; the after-window region keeps the
+current hold-the-end-value behavior (already rest for entrances).
+
+**Non-goals:** changing global keyframe sampling (only motion-preset tracks change); a post-window
+rest anchor; snapping; multiple motions per clip.
 
 ## Mechanism — rest hold-anchors at the clip boundaries
 
 A motion track is built with **rest hold-anchors** outside the window so sampling yields rest there:
 
-For an animated channel with window `[s, e]`, duration `d`, `from`/`to`/`rest` values, easing:
+For an animated channel with window `[s, e]`, `from`/`to`/`rest` values, easing:
 
 ```
-[ (0, rest, .hold) ]            // only if s > 0  → holds rest from 0 until s
+[ (0, rest, .hold) ]            // only if s > 0 AND from != rest  → holds rest from 0 until s
   (s, from, easing)             // window start: the motion's "from" state
-  (e, to,   .hold)              // window end: the motion's "to" state
-[ (d, rest, .hold) ]            // only if e < d  → holds rest after the window
+  (e, to,   easing)             // window end: the motion's "to" state (held after, as today)
 ```
 
 Sampling then gives: `< s` → rest (the frame-0 anchor, held); `s` → from; `s…e` → animate;
-`> e` → `to` held, plus the frame-`d` anchor pins rest at the clip end. For an **entrance**
-(`to == rest`, e.g. slide-in, fade-in) the after-region is rest naturally and the `d` anchor is
-redundant-but-harmless. `rest` is the channel's identity-resolved value (the clip's static
-transform): position top-left, scale size, rotation, opacity.
+`> e` → `to` held (the existing behavior). `rest` is the channel's identity-resolved value (the
+clip's static transform): position top-left, scale size, rotation, opacity.
 
-Tracks where `from == to` (an unanimated channel) are still omitted (nil) — the static transform
-already renders them at rest everywhere; anchors are only added to animated tracks.
+The pre-anchor is added **only when `s > 0` and `from != rest`** — when `s == 0` there is no
+pre-window region, and when `from == rest` the pre-window region already samples rest (the window
+start keyframe is itself rest). Tracks where `from == to` (an unanimated channel) are still omitted
+(nil). **Consequence:** every existing preset applied with a window starting at frame 0 (the
+current default for all anchors except a dragged window) produces byte-identical keyframes — so
+existing apply tests are unaffected; only a window dragged to start mid-clip gains the pre-anchor.
 
 ## Shared builder
 
-Put the windowed layout in `MotionPresetMapping` so apply and retime share it:
+Put the windowed layout in `MotionPresetMapping` (it already has `resolve(_:resting:restingOpacity:)`
+and the private `State`) so apply and retime share it:
 
-- `MotionPresetMapping.restState(resting: Transform, restingOpacity: Double) -> State` — the
-  identity-resolved rest values (reuses the existing private `resolve(.identity, …)`).
-- A per-channel builder that, given `from`, `to`, `rest`, `start`, `end`, `duration`, `easing`,
-  emits the anchored `KeyframeTrack?` above (nil when `from == to`).
-- `MotionPresetMapping.tracks(for:resting:restingOpacity:clipDurationFrames:)` is refactored to use
-  this builder at the preset's `frameRange` window (so apply produces the anchored layout).
+- A private generic per-channel builder `windowTrack(from:to:rest:start:end:easing:) -> KeyframeTrack<V>?`
+  that emits the pre-anchored layout above (nil when `from == to`).
+- `tracks(for:resting:restingOpacity:clipDurationFrames:)` is refactored to compute
+  `rest = resolve(.identity, …)` and call `windowTrack` per channel at the preset's `frameRange`
+  window (so apply produces the anchored layout). Everything stays inside `MotionPresetMapping`;
+  `State` need not be exposed.
 
 ## Apply path
 
@@ -74,14 +83,14 @@ emits anchored keyframes. The derived window (`appliedMotion.startFrame/endFrame
 
 ## Retime path (regenerate, not linear-remap)
 
-The naive linear remap can't preserve boundary anchors (frame 0 / frame d don't move with the
-window). So `setMotionWindow` / `applyMotionWindowLive` **regenerate** each track for the new
-window:
+The naive linear remap can't preserve the pre-anchor (frame 0 doesn't move with the window). So
+`setMotionWindow` / `applyMotionWindowLive` **regenerate** each track for the new window via a
+shared `MotionPresetMapping.retime(position:scale:rotation:opacity:resting:restingOpacity:oldStart:oldEnd:newStart:newEnd:) -> Tracks`:
 
-- `rest = MotionPresetMapping.restState(resting: basis.transform, restingOpacity: basis.opacity)`.
-- For each motion track present on `basis`, read `from = track.value at oldStart`,
-  `to = track.value at oldEnd` (the window-endpoint keyframes), then rebuild via the shared builder
-  at the clamped new `[s, e]` and `basis.durationFrames`.
+- `rest = resolve(.identity, resting: basis.transform, restingOpacity: basis.opacity)` (internal).
+- For each motion track present on `basis`, read `from = track.sample(at: oldStart)`,
+  `to = track.sample(at: oldEnd)`, and the easing from the window-start keyframe, then rebuild via
+  `windowTrack` at the clamped new `[s, e]`.
 - Update `appliedMotion.startFrame/endFrame`. Undo/clamp behavior unchanged ("Adjust Animation",
   min 3 frames, within `[0, d]`).
 
@@ -90,12 +99,11 @@ retime now regenerates from the window endpoints + rest).
 
 ## Edge cases
 
-- **Exit presets** (`from == rest`, `to == off-screen`, e.g. slide-out) dragged so `e < d`: the
-  after-region pins rest at frame `d`, so the clip flies out by `e` and is back at rest by clip end
-  (the `e…d` segment holds the off-screen `to` until `d`, then the anchor snaps to rest). This is a
-  known v1 nuance for exits; entrances (the user's case) are clean.
-- **Window at clip start** (`s == 0`): no pre-anchor; identical to the original entrance.
-- **Window spanning the whole clip** (`s == 0, e == d`): no anchors; two keyframes as before.
+- **Exit presets** (`from == rest`, `to == off-screen`, e.g. slide-out) dragged so `e < d`: after
+  the window the clip holds the off-screen `to` (existing behavior, unchanged by this fix). Their
+  pre-window region is already rest (`from == rest` → no pre-anchor needed). Out of scope here.
+- **Window at clip start** (`s == 0`): no pre-anchor; byte-identical to today.
+- **Window spanning the whole clip** (`s == 0, e == d`): no anchor; two keyframes as before.
 - **Unanimated channel** (`from == to`): omitted, renders static rest everywhere.
 - **Re-apply / clamp / audio rejection**: unchanged.
 
@@ -103,19 +111,17 @@ retime now regenerates from the window endpoints + rest).
 
 swift-testing; `Tests/PalmierProTests`.
 
-- **Apply (anchored layout):** a slide-in applied with a window starting after 0 produces a rest
-  hold-anchor at frame 0 and the off-screen `from` at the window start; sampling the position track
-  before the window equals rest, at the window start equals off-screen, at the window end equals
-  rest.
-- **Retime regenerates:** `setMotionWindow` to a new window keeps `from`/`to` values, moves them to
-  the new endpoints, and re-emits the rest anchors for the new window (e.g. dragging the start back
-  to 0 drops the pre-anchor).
-- **Full-window / start-at-0:** no anchors (two keyframes).
-- **Codable / window fields / clamp:** unchanged, still pass.
-- Update the existing apply/retime tests whose exact-keyframe assertions change with the anchored
-  layout. Remove `MotionRetime` tests with the helper.
+- **Apply at clip start unchanged:** a slide-in at `[0, n]` still produces exactly two keyframes
+  (no pre-anchor) — existing `MotionPresetApplyTests` keep passing untouched.
+- **Retime to a mid-clip window adds the pre-anchor:** `setMotionWindow` to `[s>0, e]` keeps the
+  `from`/`to` values, moves them to the new endpoints, and prepends `(0, rest, .hold)`; sampling
+  before `s` equals rest, at `s` equals the off-screen `from`, at `e` equals `to`.
+- **Retime back to start-at-0 drops the pre-anchor** (two keyframes again).
+- **Codable / window fields / clamp / audio rejection:** unchanged, still pass.
+- Update `SetMotionWindowTests` keyframe-frame assertions for the new pre-anchor; remove
+  `MotionRetime` + its tests (retime now regenerates via `MotionPresetMapping.retime`).
 
 ## Future extensions
 
-- Per-preset "after" semantics for exits (snap location).
+- Optional post-window rest for presets that should return to rest after their window (opt-in).
 - A toggle for "hold from-state before" vs "rest before" if a use-case wants the old behavior.
