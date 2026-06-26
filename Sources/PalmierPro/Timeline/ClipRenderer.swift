@@ -660,7 +660,7 @@ enum ClipRenderer {
     }
 
     private static func drawMotionBadge(_ motion: AppliedMotion, in clipRect: NSRect, selected: Bool, context: CGContext) {
-        guard clipRect.width > MotionBadge.iconOnlyWidth + MotionBadge.edgeInset * 2 else { return }
+        guard MotionBadge.isVisible(clipWidth: clipRect.width) else { return }
         let badge = MotionBadge.rect(in: clipRect, anchor: motion.anchor)
         let radius: CGFloat = 3
         let path = CGPath(roundedRect: badge, cornerWidth: radius, cornerHeight: radius, transform: nil)

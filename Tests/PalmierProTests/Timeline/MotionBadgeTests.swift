@@ -33,4 +33,9 @@ struct MotionBadgeTests {
         let r = MotionBadge.rect(in: narrow, anchor: .clipStart)
         #expect(r.minX >= narrow.minX && r.maxX <= narrow.maxX)
     }
+
+    @Test func isVisibleOnlyWhenWideEnough() {
+        #expect(MotionBadge.isVisible(clipWidth: 200))
+        #expect(!MotionBadge.isVisible(clipWidth: 24))
+    }
 }
