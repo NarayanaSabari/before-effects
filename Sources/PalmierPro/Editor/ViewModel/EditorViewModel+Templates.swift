@@ -2,7 +2,7 @@ import Foundation
 
 extension EditorViewModel {
     /// Applies a motion preset's keyframe tracks onto a clip, REPLACING any existing
-    /// position/scale/rotation/opacity tracks. A non-nil `name` records an `appliedMotion` badge;
+    /// position/scale/rotation/opacity tracks. A non-nil `name` records the `appliedMotion` window;
     /// nil clears it. Returns false if the clip is missing or is an audio clip. Undoable:
     /// `commitClipProperty` registers a property swap.
     @discardableResult
@@ -25,7 +25,7 @@ extension EditorViewModel {
         return true
     }
 
-    /// Removes a clip's applied motion: clears the four keyframe tracks and the badge metadata.
+    /// Removes a clip's applied motion: clears the four keyframe tracks and the appliedMotion metadata.
     func clearAppliedMotion(clipId: String) {
         guard findClip(id: clipId) != nil else { return }
         commitClipProperty(clipId: clipId) { c in
