@@ -1,7 +1,6 @@
 import AppKit
 
-/// Geometry for the applied-motion bar drawn over a clip. Pure: shared by the renderer and the
-/// timeline hit-test so the drawn bar and the grab targets agree.
+/// Pure geometry for the applied-motion bar, shared by the renderer and the timeline hit-test.
 enum MotionBar {
     static let height: CGFloat = 16
     static let bottomInset: CGFloat = 2
