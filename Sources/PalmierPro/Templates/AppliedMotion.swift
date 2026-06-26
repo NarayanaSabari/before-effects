@@ -1,8 +1,6 @@
 import Foundation
 
-/// Metadata recording that a motion template was applied to a clip, so the timeline can draw a
-/// selectable badge and remove the motion as one unit. `frames`/`anchor` mirror the applied
-/// preset's span for badge placement.
+/// Records that a template was applied to a clip, so the timeline can badge and remove it as a unit.
 struct AppliedMotion: Codable, Sendable, Equatable {
     var name: String
     var anchor: MotionAnchor
