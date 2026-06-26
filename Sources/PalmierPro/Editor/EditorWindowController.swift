@@ -74,6 +74,11 @@ final class EditorWindowController: NSWindowController {
             return true
 
         case 51: // Delete/Backspace
+            if let motionClip = editorViewModel.selectedMotionClipId {
+                editorViewModel.clearAppliedMotion(clipId: motionClip)
+                editorViewModel.selectedMotionClipId = nil
+                return true
+            }
             if !editorViewModel.selectedFolderIds.isEmpty || !editorViewModel.selectedMediaAssetIds.isEmpty {
                 if !editorViewModel.selectedFolderIds.isEmpty {
                     editorViewModel.deleteFolders(ids: editorViewModel.selectedFolderIds)
