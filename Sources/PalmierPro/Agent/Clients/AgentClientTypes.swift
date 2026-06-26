@@ -159,7 +159,8 @@ enum AnthropicRequestBody {
         maxTokens: Int,
         system: String,
         tools: [AnthropicToolSchema],
-        messages: [AnthropicMessage]
+        messages: [AnthropicMessage],
+        prependSystemText: String? = nil
     ) -> [String: Any] {
         var toolBlocks: [[String: Any]] = tools.map {
             ["name": $0.name, "description": $0.description, "input_schema": $0.inputSchema]
@@ -181,11 +182,16 @@ enum AnthropicRequestBody {
             lastMsg["content"] = content
             messageBlocks.append(lastMsg)
         }
+        var systemBlocks: [[String: Any]] = []
+        if let prependSystemText {
+            systemBlocks.append(["type": "text", "text": prependSystemText])
+        }
+        systemBlocks.append(["type": "text", "text": system, "cache_control": ["type": "ephemeral"]])
         var body: [String: Any] = [
             "model": model.rawValue,
             "max_tokens": maxTokens,
             "stream": true,
-            "system": [["type": "text", "text": system, "cache_control": ["type": "ephemeral"]]],
+            "system": systemBlocks,
             "messages": messageBlocks,
         ]
         if !toolBlocks.isEmpty { body["tools"] = toolBlocks }
