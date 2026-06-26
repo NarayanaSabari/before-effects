@@ -77,6 +77,16 @@ final class TimelineInputController {
             return
         }
 
+        if let badgeHit = hitTestMotionBadge(at: point, trackIndex: trackIndex, geometry: geometry) {
+            let clip = editor.timeline.tracks[badgeHit.trackIndex].clips[badgeHit.clipIndex]
+            editor.selectedMotionClipId = clip.id
+            editor.selectedClipIds.removeAll()
+            editor.selectedGap = nil
+            view.needsDisplay = true
+            return
+        }
+        editor.selectedMotionClipId = nil
+
         if let hit = hitTestClip(at: point, trackIndex: trackIndex, geometry: geometry) {
             let clip = editor.timeline.tracks[hit.trackIndex].clips[hit.clipIndex]
             let rect = geometry.clipRect(for: clip, trackIndex: hit.trackIndex)
@@ -720,6 +730,19 @@ final class TimelineInputController {
         guard editor.timeline.tracks.indices.contains(trackIndex) else { return nil }
         for (ci, clip) in editor.timeline.tracks[trackIndex].clips.enumerated() {
             if geometry.clipRect(for: clip, trackIndex: trackIndex).contains(point) {
+                return ClipLocation(trackIndex: trackIndex, clipIndex: ci)
+            }
+        }
+        return nil
+    }
+
+    /// The clip whose applied-motion badge is under `point`, if any.
+    func hitTestMotionBadge(at point: NSPoint, trackIndex: Int, geometry: TimelineGeometry) -> ClipLocation? {
+        guard editor.timeline.tracks.indices.contains(trackIndex) else { return nil }
+        for (ci, clip) in editor.timeline.tracks[trackIndex].clips.enumerated() {
+            guard let motion = clip.appliedMotion else { continue }
+            let clipRect = geometry.clipRect(for: clip, trackIndex: trackIndex)
+            if MotionBadge.rect(in: clipRect, anchor: motion.anchor).contains(point) {
                 return ClipLocation(trackIndex: trackIndex, clipIndex: ci)
             }
         }
