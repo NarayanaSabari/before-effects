@@ -103,7 +103,7 @@ With the subscription path, expose `AnthropicModel.allCases` as available models
 
 New section above the API-key field:
 
-- **Heading:** "Connect to pi.dev" (final label TBD-not-needed; use "pi.dev").
+- **Heading:** "Connect to pi.dev".
 - **Not connected** (no local pi login): a "Connect to pi.dev" button and hint
   text: "Requires pi installed and logged in. Run `pi` then `/login`." The
   button, when no credential is found, simply re-checks and surfaces the hint
