@@ -759,6 +759,7 @@ final class TimelineInputController {
         for (ci, clip) in editor.timeline.tracks[trackIndex].clips.enumerated() {
             guard let motion = clip.appliedMotion else { continue }
             let clipRect = geometry.clipRect(for: clip, trackIndex: trackIndex)
+            guard MotionBadge.isVisible(clipWidth: clipRect.width) else { continue }
             if MotionBadge.rect(in: clipRect, anchor: motion.anchor).contains(point) {
                 return ClipLocation(trackIndex: trackIndex, clipIndex: ci)
             }

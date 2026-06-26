@@ -74,7 +74,7 @@ final class EditorWindowController: NSWindowController {
             return true
 
         case 51: // Delete/Backspace
-            if let motionClip = editorViewModel.selectedMotionClipId {
+            if editorViewModel.focusedPanel != .media, let motionClip = editorViewModel.selectedMotionClipId {
                 editorViewModel.clearAppliedMotion(clipId: motionClip)
                 editorViewModel.selectedMotionClipId = nil
                 return true

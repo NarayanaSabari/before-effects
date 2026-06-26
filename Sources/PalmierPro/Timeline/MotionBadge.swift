@@ -14,6 +14,11 @@ enum MotionBadge {
         clipWidth >= minClipWidthForName
     }
 
+    /// Whether the badge is drawn at all; the hit-test must agree so it is never invisibly clickable.
+    static func isVisible(clipWidth: CGFloat) -> Bool {
+        clipWidth > iconOnlyWidth + edgeInset * 2
+    }
+
     static func rect(in clipRect: NSRect, anchor: MotionAnchor) -> NSRect {
         let wantWidth = showsName(clipWidth: clipRect.width) ? namedWidth : iconOnlyWidth
         let available = max(0, clipRect.width - edgeInset * 2)
