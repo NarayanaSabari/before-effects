@@ -452,7 +452,8 @@ final class TimelineView: NSView {
                                   cache: editor.mediaVisualCache,
                                   displayName: editor.clipDisplayLabel(for: clip),
                                   linkOffset: linkOffsets[clip.id],
-                                  fps: editor.timeline.fps, isMissing: clipMissing, isGenerating: clipGenerating)
+                                  fps: editor.timeline.fps, isMissing: clipMissing, isGenerating: clipGenerating,
+                                  motionSelected: editor.selectedMotionClipId == clip.id)
             }
         }
 
