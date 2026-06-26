@@ -45,26 +45,51 @@ enum MotionPresetMapping {
         let (sf, ef) = frameRange(for: preset.span, clipDurationFrames: clipDurationFrames)
         let s = resolve(preset.start, resting: resting, restingOpacity: restingOpacity)
         let e = resolve(preset.end, resting: resting, restingOpacity: restingOpacity)
+        let rest = resolve(.identity, resting: resting, restingOpacity: restingOpacity)
         let easing = preset.easing
-
-        func pairTrack(_ a: AnimPair, _ b: AnimPair) -> KeyframeTrack<AnimPair>? {
-            a == b ? nil : KeyframeTrack(keyframes: [
-                Keyframe(frame: sf, value: a, interpolationOut: easing),
-                Keyframe(frame: ef, value: b, interpolationOut: easing),
-            ])
-        }
-        func scalarTrack(_ a: Double, _ b: Double) -> KeyframeTrack<Double>? {
-            a == b ? nil : KeyframeTrack(keyframes: [
-                Keyframe(frame: sf, value: a, interpolationOut: easing),
-                Keyframe(frame: ef, value: b, interpolationOut: easing),
-            ])
-        }
-
         return Tracks(
-            position: pairTrack(s.topLeft, e.topLeft),
-            scale: pairTrack(s.size, e.size),
-            rotation: scalarTrack(s.rotation, e.rotation),
-            opacity: scalarTrack(s.opacity, e.opacity)
+            position: windowTrack(from: s.topLeft, to: e.topLeft, rest: rest.topLeft, start: sf, end: ef, easing: easing),
+            scale: windowTrack(from: s.size, to: e.size, rest: rest.size, start: sf, end: ef, easing: easing),
+            rotation: windowTrack(from: s.rotation, to: e.rotation, rest: rest.rotation, start: sf, end: ef, easing: easing),
+            opacity: windowTrack(from: s.opacity, to: e.opacity, rest: rest.opacity, start: sf, end: ef, easing: easing)
+        )
+    }
+
+    /// A motion track for one channel over `[start, end]`, with a rest hold-anchor at frame 0 when
+    /// the window starts after 0 and the start value isn't rest (so the clip rests before the window).
+    private static func windowTrack<V: Codable & Sendable & Equatable>(
+        from: V, to: V, rest: V, start: Int, end: Int, easing: Interpolation
+    ) -> KeyframeTrack<V>? {
+        guard from != to else { return nil }
+        var kfs: [Keyframe<V>] = []
+        if start > 0, from != rest {
+            kfs.append(Keyframe(frame: 0, value: rest, interpolationOut: .hold))
+        }
+        kfs.append(Keyframe(frame: start, value: from, interpolationOut: easing))
+        kfs.append(Keyframe(frame: end, value: to, interpolationOut: easing))
+        return KeyframeTrack(keyframes: kfs)
+    }
+
+    /// Regenerate motion tracks for a new window, reading from/to from the existing window endpoints.
+    static func retime(
+        position: KeyframeTrack<AnimPair>?, scale: KeyframeTrack<AnimPair>?,
+        rotation: KeyframeTrack<Double>?, opacity: KeyframeTrack<Double>?,
+        resting: Transform, restingOpacity: Double,
+        oldStart: Int, oldEnd: Int, newStart: Int, newEnd: Int
+    ) -> Tracks {
+        let rest = resolve(.identity, resting: resting, restingOpacity: restingOpacity)
+        func rebuild<V: Codable & Sendable & Equatable & KeyframeInterpolatable>(_ t: KeyframeTrack<V>?, _ restVal: V) -> KeyframeTrack<V>? {
+            guard let t else { return nil }
+            let from = t.sample(at: oldStart, fallback: restVal)
+            let to = t.sample(at: oldEnd, fallback: restVal)
+            let easing = t.keyframes.first(where: { $0.frame == oldStart })?.interpolationOut ?? .smooth
+            return windowTrack(from: from, to: to, rest: restVal, start: newStart, end: newEnd, easing: easing)
+        }
+        return Tracks(
+            position: rebuild(position, rest.topLeft),
+            scale: rebuild(scale, rest.size),
+            rotation: rebuild(rotation, rest.rotation),
+            opacity: rebuild(opacity, rest.opacity)
         )
     }
 }
