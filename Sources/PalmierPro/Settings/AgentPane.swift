@@ -180,7 +180,7 @@ struct AgentPane: View {
     private var piControlRow: some View {
         if piConnected {
             HStack(spacing: AppTheme.Spacing.sm) {
-                Circle().fill(Color.green).frame(width: 8, height: 8)
+                Circle().fill(AppTheme.Status.green).frame(width: 8, height: 8)
                 Text("Connected — Claude Pro/Max via local pi")
                     .font(.system(size: AppTheme.FontSize.sm))
                     .foregroundStyle(AppTheme.Text.secondaryColor)

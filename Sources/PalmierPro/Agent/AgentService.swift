@@ -1,12 +1,18 @@
 import Foundation
 import Observation
 
+extension Notification.Name {
+    static let piConnectionChanged = Notification.Name("piConnectionChanged")
+}
+
 @Observable
 @MainActor
 final class AgentService {
 
     private var apiKey: String = ""
     private var apiKeyObserver: NSObjectProtocol?
+    private var piConnectionObserver: NSObjectProtocol?
+    private(set) var piConnected: Bool = false
 
     init() {
         reloadAPIKey()
@@ -18,6 +24,12 @@ final class AgentService {
             MainActor.assumeIsolated {
                 self?.reloadAPIKey()
             }
+        }
+        piConnected = Self.isPiConnected
+        piConnectionObserver = NotificationCenter.default.addObserver(
+            forName: .piConnectionChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.piConnected = AgentService.isPiConnected }
         }
     }
 
@@ -34,6 +46,9 @@ final class AgentService {
         if let token = apiKeyObserver {
             NotificationCenter.default.removeObserver(token)
         }
+        if let token = piConnectionObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
 
     static let piConnectedDefaultsKey = "piDotDevConnected"
@@ -45,26 +60,27 @@ final class AgentService {
 
     static func setPiConnected(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: piConnectedDefaultsKey)
+        NotificationCenter.default.post(name: .piConnectionChanged, object: nil)
     }
 
     var hasApiKey: Bool { !apiKey.isEmpty }
 
     var canStream: Bool {
-        if Self.isPiConnected { return true }
+        if piConnected { return true }
         if hasApiKey { return true }
         let account = AccountService.shared
         return account.isSignedIn && account.hasCredits
     }
 
     var availableModels: [AnthropicModel] {
-        if Self.isPiConnected || hasApiKey { return AnthropicModel.allCases }
+        if piConnected || hasApiKey { return AnthropicModel.allCases }
         return AccountService.shared.isPaid ? [.sonnet5] : [.haiku45]
     }
 
     private func selectClient() -> (any AgentClient)? {
         let chosen = effectiveModel
         switch AgentClientSelection.choose(
-            piConnected: Self.isPiConnected, hasApiKey: hasApiKey,
+            piConnected: piConnected, hasApiKey: hasApiKey,
             isSignedIn: AccountService.shared.isSignedIn
         ) {
         case .piLocal: return PiLocalClient(model: chosen)
