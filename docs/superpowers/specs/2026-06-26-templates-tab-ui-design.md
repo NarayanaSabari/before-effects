@@ -73,7 +73,7 @@ EditorViewModel.applyMotionPreset(_:toClipId:)   ◄── also called by ToolEx
 
 **New components**
 - `TemplateTab` (SwiftUI view, in `Sources/PalmierPro/MediaPanel/`).
-- A template drag payload: a sentinel **string** `palmier.template:<uuid>`.
+- A template drag payload: a sentinel **string** `palmier-template://<uuid>`.
 - `EditorViewModel.applyMotionPreset(_:toClipId:)` — shared, undoable apply.
 - A clip hit-test: `clipAt(point:)` (timeline geometry → track + frame → clip).
 
