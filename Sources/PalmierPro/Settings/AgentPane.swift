@@ -7,11 +7,15 @@ struct AgentPane: View {
     @State private var maskedKey: String = ""
     @State private var draft: String = ""
     @FocusState private var isFocused: Bool
+    @State private var piHasLocalLogin: Bool = false
+    @State private var piConnected: Bool = false
 
     private let consoleURL = URL(string: "https://console.anthropic.com/settings/keys")!
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            piSection
+            Divider().overlay(AppTheme.Border.subtleColor)
             apiKeySection
             Divider().overlay(AppTheme.Border.subtleColor)
             mcpSection
@@ -117,6 +121,8 @@ struct AgentPane: View {
     private func applyKey(_ key: String) {
         hasKey = !key.isEmpty
         maskedKey = mask(key)
+        piHasLocalLogin = PiLocalCredential.load(from: PiLocalCredential.authFileURL) != nil
+        piConnected = AgentService.isPiConnected
     }
 
     private func save() {
@@ -151,6 +157,60 @@ struct AgentPane: View {
     private func mask(_ key: String) -> String {
         guard key.count > 4 else { return String(repeating: "\u{2022}", count: 32) }
         return String(repeating: "\u{2022}", count: 36) + key.suffix(4)
+    }
+
+    // MARK: - pi.dev connection
+
+    private var piSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.smMd) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                Text("Connect to pi.dev")
+                    .font(.system(size: AppTheme.FontSize.md, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.primaryColor)
+                Text("Use your local pi login (Claude Pro/Max) for AI chat. This machine only; usage draws from your own Claude plan.")
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.tertiaryColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            piControlRow
+        }
+    }
+
+    @ViewBuilder
+    private var piControlRow: some View {
+        if piConnected {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Circle().fill(Color.green).frame(width: 8, height: 8)
+                Text("Connected — Claude Pro/Max via local pi")
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+                Spacer()
+                Button("Disconnect") {
+                    AgentService.setPiConnected(false)
+                    refresh()
+                }
+                .buttonStyle(.capsule(.secondary, size: .regular))
+                .controlSize(.large)
+            }
+        } else if piHasLocalLogin {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Text("Local pi login found.")
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.tertiaryColor)
+                Spacer()
+                Button("Connect to pi.dev") {
+                    AgentService.setPiConnected(true)
+                    refresh()
+                }
+                .buttonStyle(.capsule(.prominent, size: .regular))
+                .controlSize(.large)
+            }
+        } else {
+            Text("No local pi login found. Install pi, then run `pi` and `/login` to sign in to Claude.")
+                .font(.system(size: AppTheme.FontSize.sm, design: .monospaced))
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: - MCP server

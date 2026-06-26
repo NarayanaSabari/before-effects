@@ -38,33 +38,33 @@ final class AgentService {
 
     static let piConnectedDefaultsKey = "piDotDevConnected"
 
-    var isPiConnected: Bool {
-        UserDefaults.standard.bool(forKey: Self.piConnectedDefaultsKey)
+    static var isPiConnected: Bool {
+        UserDefaults.standard.bool(forKey: piConnectedDefaultsKey)
             && PiLocalCredential.load(from: PiLocalCredential.authFileURL) != nil
     }
 
-    func setPiConnected(_ on: Bool) {
-        UserDefaults.standard.set(on, forKey: Self.piConnectedDefaultsKey)
+    static func setPiConnected(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: piConnectedDefaultsKey)
     }
 
     var hasApiKey: Bool { !apiKey.isEmpty }
 
     var canStream: Bool {
-        if isPiConnected { return true }
+        if Self.isPiConnected { return true }
         if hasApiKey { return true }
         let account = AccountService.shared
         return account.isSignedIn && account.hasCredits
     }
 
     var availableModels: [AnthropicModel] {
-        if isPiConnected || hasApiKey { return AnthropicModel.allCases }
+        if Self.isPiConnected || hasApiKey { return AnthropicModel.allCases }
         return AccountService.shared.isPaid ? [.sonnet5] : [.haiku45]
     }
 
     private func selectClient() -> (any AgentClient)? {
         let chosen = effectiveModel
         switch AgentClientSelection.choose(
-            piConnected: isPiConnected, hasApiKey: hasApiKey,
+            piConnected: Self.isPiConnected, hasApiKey: hasApiKey,
             isSignedIn: AccountService.shared.isSignedIn
         ) {
         case .piLocal: return PiLocalClient(model: chosen)
