@@ -60,7 +60,8 @@ enum ClipRenderer {
         linkOffset: Int? = nil,
         fps: Int,
         isMissing: Bool = false,
-        isGenerating: Bool = false
+        isGenerating: Bool = false,
+        motionSelected: Bool = false
     ) {
         if opacity < 1.0 {
             context.saveGState()
@@ -143,6 +144,10 @@ enum ClipRenderer {
         }
 
         drawLabelBar(clip: clip, type: type, in: labelRect, clipRect: rect, context: context, displayName: displayName, fps: fps)
+
+        if let motion = clip.appliedMotion {
+            drawMotionBadge(motion, in: rect, selected: motionSelected, context: context)
+        }
 
         if let linkOffset, linkOffset != 0 {
             drawOffsetBadge(frames: linkOffset, in: rect, context: context)
@@ -651,6 +656,36 @@ enum ClipRenderer {
         context.addPath(path)
         context.fillPath()
         str.draw(at: NSPoint(x: badgeRect.minX + padH, y: badgeRect.minY + padV))
+        context.restoreGState()
+    }
+
+    private static func drawMotionBadge(_ motion: AppliedMotion, in clipRect: NSRect, selected: Bool, context: CGContext) {
+        guard clipRect.width > MotionBadge.iconOnlyWidth + MotionBadge.edgeInset * 2 else { return }
+        let badge = MotionBadge.rect(in: clipRect, anchor: motion.anchor)
+        let radius: CGFloat = 3
+        let path = CGPath(roundedRect: badge, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        context.saveGState()
+        context.setFillColor(AppTheme.Accent.timecodeNSColor.withAlphaComponent(selected ? 0.95 : 0.7).cgColor)
+        context.addPath(path)
+        context.fillPath()
+        if selected {
+            context.setStrokeColor(NSColor.white.withAlphaComponent(0.95).cgColor)
+            context.setLineWidth(1.5)
+            context.addPath(path)
+            context.strokePath()
+        }
+
+        let showName = MotionBadge.showsName(clipWidth: clipRect.width)
+        let label = showName ? "✦ \(motion.name)" : "✦"
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: AppTheme.FontSize.xxs, weight: .semibold),
+            .foregroundColor: NSColor.white,
+        ]
+        let str = NSAttributedString(string: label, attributes: attrs)
+        let size = str.size()
+        let origin = NSPoint(x: badge.minX + 4, y: badge.minY + (badge.height - size.height) / 2)
+        context.clip(to: badge.insetBy(dx: 3, dy: 0))
+        str.draw(at: origin)
         context.restoreGState()
     }
 
