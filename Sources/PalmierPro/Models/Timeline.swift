@@ -107,6 +107,7 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
     var volumeTrack: KeyframeTrack<Double>?
 
     var effects: [Effect]?
+    var appliedMotion: AppliedMotion?
 
     private enum CodingKeys: String, CodingKey {
         case id, mediaRef, mediaType, sourceClipType, startFrame, durationFrames
@@ -116,6 +117,7 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
         case linkGroupId, captionGroupId, textContent, textStyle
         case opacityTrack, positionTrack, scaleTrack, rotationTrack, cropTrack, volumeTrack
         case effects
+        case appliedMotion
     }
 
     /// Frame where this clip ends on the timeline
@@ -360,7 +362,8 @@ extension Clip {
             rotationTrack: try? c.decode(KeyframeTrack<Double>.self, forKey: .rotationTrack),
             cropTrack: try? c.decode(KeyframeTrack<Crop>.self, forKey: .cropTrack),
             volumeTrack: try? c.decode(KeyframeTrack<Double>.self, forKey: .volumeTrack),
-            effects: try? c.decode([Effect].self, forKey: .effects)
+            effects: try? c.decode([Effect].self, forKey: .effects),
+            appliedMotion: try? c.decode(AppliedMotion.self, forKey: .appliedMotion)
         )
     }
 }
